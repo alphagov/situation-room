@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	calendar "code.google.com/p/google-api-go-client/calendar/v3"
+	calendar "google.golang.org/api/calendar/v3"
 )
 
 const dateTimeFormat = "2006-01-02T15:04:05Z07:00"
