@@ -39,7 +39,7 @@ func (c ApiClient) GetToken() *oauth2.Token {
 	token, err := conf.TokenSource(oauth2.NoContext).Token()
 
 	if err != nil {
-		log.Fatal("assertion error:", err)
+		panic(err)
 	}
 
 	log.Printf("New access token acquired.\n")

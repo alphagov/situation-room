@@ -35,7 +35,6 @@ func main() {
 	calendars = parseCalendarConfig(calendarConfig)
 
 	startTicker()
-	go loadEvents()
 
 	log.Println("API is starting up on :" + port)
 	log.Println("Use Ctrl+C to stop")
@@ -129,6 +128,12 @@ func roomsLoaded() bool {
 func loadEvents() {
 	log.Print("Loading events...")
 
+	defer func() {
+		if err := recover(); err != nil {
+			log.Println("loadEvents failed:", err)
+		}
+	}()
+
 	client.Token = client.GetToken()
 
 	for calendarName, calendarId := range calendars {
@@ -173,6 +178,7 @@ func parseCalendarConfig(config string) map[string]string {
 }
 
 func startTicker() {
+	go loadEvents()
 	ticker := time.NewTicker(60 * time.Second)
 	quit := make(chan struct{})
 	go func() {
