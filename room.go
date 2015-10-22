@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"time"
 
 	calendar "google.golang.org/api/calendar/v3"
@@ -66,16 +67,40 @@ func (r Room) AvailableUntil() time.Time {
 	return firstEvent.StartAt()
 }
 
-func CreateRoomFromEvents(roomName string, calendarEvents []*calendar.Event) Room {
+func CreateRoomFromEvents(calendarId, roomName string, calendarEvents []*calendar.Event) Room {
 	room := Room{
 		Name: roomName,
 	}
 
 	for _, calendarEvent := range calendarEvents {
+		// filter the event if the room hasn't accepted the booking request
+		if !roomAccepted(calendarId, calendarEvent) {
+			continue
+		}
+
 		event := Event{
 			Source: calendarEvent,
 		}
 		room.Events = append(room.Events, event)
 	}
 	return room
+}
+
+func roomAccepted(calendarId string, calendarEvent *calendar.Event) bool {
+	room := filterAttendees(calendarId, calendarEvent.Attendees)
+	if room != nil {
+		return room.ResponseStatus == "accepted"
+	}
+
+	log.Printf("Unable to find room %v in event %v\n", calendarId, calendarEvent.Summary)
+	return false
+}
+
+func filterAttendees(calendarId string, attendees []*calendar.EventAttendee) *calendar.EventAttendee {
+	for _, attendee := range attendees {
+		if attendee.Email == calendarId {
+			return attendee
+		}
+	}
+	return nil
 }

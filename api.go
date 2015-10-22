@@ -138,16 +138,18 @@ func loadEvents() {
 
 func loadEventsForRoom(calendarName string, calendarId string) {
 	log.Printf("Loading %v", calendarName)
+	startTime := time.Now()
+	endTime := startTime.Truncate(24 * time.Hour).Add(24 * time.Hour)
 	events, err := client.Api().Events.List(calendarId).
-		TimeMin(time.Now().Format(time.RFC3339)).
-		TimeMax(time.Now().Truncate(24 * time.Hour).Add(24 * time.Hour).Format(time.RFC3339)).
+		TimeMin(startTime.Format(time.RFC3339)).
+		TimeMax(endTime.Format(time.RFC3339)).
 		SingleEvents(true).
 		OrderBy("startTime").Do()
 
 	if err != nil {
 		log.Printf("Error loading room %v: %v", calendarName, err)
 	} else {
-		rooms[calendarName] = CreateRoomFromEvents(calendarName, events.Items)
+		rooms[calendarName] = CreateRoomFromEvents(calendarId, calendarName, events.Items)
 		log.Printf("Finished loading %v events for %v", len(rooms[calendarName].Events), calendarName)
 	}
 }
