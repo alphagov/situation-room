@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	calendar "code.google.com/p/google-api-go-client/calendar/v3"
+	calendar "google.golang.org/api/calendar/v3"
 )
 
 // the amount of time (in minutes) in which the room should be free

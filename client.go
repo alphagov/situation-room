@@ -5,10 +5,10 @@ import (
 	"log"
 	"net/http"
 
-	"code.google.com/p/goauth2/oauth"
-	"code.google.com/p/goauth2/oauth/jwt"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/jwt"
 
-	calendar "code.google.com/p/google-api-go-client/calendar/v3"
+	calendar "google.golang.org/api/calendar/v3"
 )
 
 const scope = "https://www.googleapis.com/auth/calendar.readonly"
@@ -18,22 +18,26 @@ const tokenURL = "https://accounts.google.com/o/oauth2/token"
 type ApiClient struct {
 	ClientId   string
 	EncodedKey string
-	Token      *oauth.Token
+	Token      *oauth2.Token
 }
 
-func (c ApiClient) GetToken() *oauth.Token {
+func (c ApiClient) GetToken() *oauth2.Token {
 
 	keyBytes, err := base64.StdEncoding.DecodeString(c.EncodedKey)
 	if err != nil {
 		log.Fatal("Error decoding private key:", err)
 	}
 
-	t := jwt.NewToken(c.ClientId, scope, keyBytes)
-	t.ClaimSet.Aud = tokenURL
+	conf := &jwt.Config{
+		Email:      c.ClientId,
+		PrivateKey: keyBytes,
+		TokenURL:   tokenURL,
+		Scopes:     []string{scope},
+	}
 
-	log.Print("Requesting new access token.\n")
-	httpClient := &http.Client{}
-	token, err := t.Assert(httpClient)
+	log.Printf("Requesting new access token.\n")
+	token, err := conf.TokenSource(oauth2.NoContext).Token()
+
 	if err != nil {
 		log.Fatal("assertion error:", err)
 	}
@@ -43,21 +47,17 @@ func (c ApiClient) GetToken() *oauth.Token {
 }
 
 func (c ApiClient) Client() *http.Client {
-	config := &oauth.Config{
-		ClientId:     c.ClientId,
+	config := &oauth2.Config{
+		ClientID:     c.ClientId,
 		ClientSecret: "notasecret",
-		Scope:        scope,
-		AuthURL:      authURL,
-		TokenURL:     tokenURL,
+		Scopes:       []string{scope},
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  authURL,
+			TokenURL: tokenURL,
+		},
 	}
 
-	transport := &oauth.Transport{
-		Token:     c.Token,
-		Config:    config,
-		Transport: http.DefaultTransport,
-	}
-
-	return transport.Client()
+	return config.Client(oauth2.NoContext, c.Token)
 }
 
 func (c ApiClient) Api() *calendar.Service {
