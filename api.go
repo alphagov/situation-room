@@ -42,7 +42,7 @@ func main() {
 
 	http.HandleFunc("/rooms", roomsIndexHandler)
 	http.HandleFunc("/rooms/", roomsShowHandler)
-	http.ListenAndServe(":"+port, nil)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
 func Authenticate(user, realm string) string {
