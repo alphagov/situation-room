@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -74,7 +75,7 @@ func CreateRoomFromEvents(calendarId, roomName string, calendarEvents []*calenda
 
 	for _, calendarEvent := range calendarEvents {
 		// filter the event if the room hasn't accepted the booking request
-		if !roomAccepted(calendarId, calendarEvent) {
+		if !roomAccepted(calendarId, roomName, calendarEvent) {
 			continue
 		}
 
@@ -86,14 +87,36 @@ func CreateRoomFromEvents(calendarId, roomName string, calendarEvents []*calenda
 	return room
 }
 
-func roomAccepted(calendarId string, calendarEvent *calendar.Event) bool {
+func roomAccepted(calendarId, roomName string, calendarEvent *calendar.Event) bool {
 	room := filterAttendees(calendarId, calendarEvent.Attendees)
 	if room != nil {
 		return room.ResponseStatus == "accepted"
 	}
 
-	log.Printf("Unable to find room %v in event %v\n", calendarId, calendarEvent.Summary)
-	return false
+	// TODO(jabley): handle a bunch of fun things:
+	// - private events
+	// - events booked directly in a room calendar (rather than inviting a room to an event)
+	//
+	if calendarEvent.Visibility == "private" {
+		log.Printf("No visibility of private event %v in %v. Assuming it wins\n", calendarEvent.Id, roomName)
+		return true
+	}
+
+	if len(calendarEvent.Attendees) == 0 {
+		log.Printf("No attendees for event %v in %v – assuming it's booked direct to the room's calendar\n",
+			calendarEvent.Summary,
+			roomName)
+		return true
+	}
+
+	log.Printf("Unable to find room %v in event %v\n", roomName, calendarEvent.Summary)
+	attendeeStr := ""
+	for _, attendee := range calendarEvent.Attendees {
+		attendeeStr = attendeeStr + fmt.Sprintf("\t%v %v %v\n", attendee.DisplayName, attendee.Email, attendee.Id)
+	}
+	log.Printf("Attendees: %v\n", attendeeStr)
+
+	return true
 }
 
 func filterAttendees(calendarId string, attendees []*calendar.EventAttendee) *calendar.EventAttendee {
