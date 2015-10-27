@@ -4,7 +4,6 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -27,6 +26,9 @@ var authPassword = os.Getenv("MEETING_ROOM_AUTH_PASS")
 
 var rooms map[string]Room = make(map[string]Room)
 
+// This version can be set at build time via the -X flag.
+var Version = "Not Set"
+
 func main() {
 	client = ApiClient{
 		ClientId:   googleClientId,
@@ -41,7 +43,21 @@ func main() {
 
 	http.HandleFunc("/rooms", roomsIndexHandler)
 	http.HandleFunc("/rooms/", roomsShowHandler)
+	http.HandleFunc("/_status", statusHandler)
+
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+
+func statusHandler(w http.ResponseWriter, r *http.Request) {
+	renderJSON(w, map[string]string{"version": Version})
+}
+
+func renderJSON(w http.ResponseWriter, v interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	encoder := json.NewEncoder(w)
+	if err := encoder.Encode(v); err != nil {
+		panic(err)
+	}
 }
 
 func Authenticate(user, realm string) string {
@@ -56,8 +72,6 @@ func Authenticate(user, realm string) string {
 }
 
 func roomsIndexHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	roomSet := RoomSet{
 		Rooms:       rooms,
 		TotalRooms:  len(calendars),
@@ -72,12 +86,7 @@ func roomsIndexHandler(w http.ResponseWriter, r *http.Request) {
 		status = "incomplete"
 	}
 
-	b, err := json.Marshal(apiResponse.present(status))
-	if err != nil {
-		log.Fatal("Error preparing JSON: ", err)
-	}
-	response := string(b)
-	fmt.Fprintf(w, response)
+	renderJSON(w, apiResponse.present(status))
 }
 
 func roomsShowHandler(w http.ResponseWriter, r *http.Request) {
@@ -109,13 +118,7 @@ func roomsShowHandler(w http.ResponseWriter, r *http.Request) {
 		status = "incomplete"
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	b, err := json.Marshal(apiResponse.present(status))
-	if err != nil {
-		log.Fatal("Error preparing JSON: ", err)
-	}
-	response := string(b)
-	fmt.Fprintf(w, response)
+	renderJSON(w, apiResponse.present(status))
 }
 
 func roomsLoaded() bool {
