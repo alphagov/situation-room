@@ -63,7 +63,9 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 func Authenticate(user, realm string) string {
 	if user == authUsername {
 		d := sha1.New()
-		d.Write([]byte(authPassword))
+		if _, err := d.Write([]byte(authPassword)); err != nil {
+			panic(err)
+		}
 		e := base64.StdEncoding.EncodeToString(d.Sum(nil))
 
 		return "{SHA}" + e
