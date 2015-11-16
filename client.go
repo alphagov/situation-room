@@ -2,12 +2,13 @@ package main
 
 import (
 	"encoding/base64"
-	"log"
+
 	"net/http"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/jwt"
 
+	log "github.com/Sirupsen/logrus"
 	calendar "google.golang.org/api/calendar/v3"
 )
 
@@ -35,14 +36,14 @@ func (c ApiClient) GetToken() *oauth2.Token {
 		Scopes:     []string{scope},
 	}
 
-	log.Printf("Requesting new access token.\n")
+	log.Debug("Requesting new access token.\n")
 	token, err := conf.TokenSource(oauth2.NoContext).Token()
 
 	if err != nil {
 		panic(err)
 	}
 
-	log.Printf("New access token acquired.\n")
+	log.Debug("New access token acquired.\n")
 	return token
 }
 
