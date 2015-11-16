@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	calendar "google.golang.org/api/calendar/v3"
 )
 
@@ -98,23 +98,23 @@ func roomAccepted(calendarId, roomName string, calendarEvent *calendar.Event) bo
 	// - events booked directly in a room calendar (rather than inviting a room to an event)
 	//
 	if calendarEvent.Visibility == "private" {
-		log.Printf("No visibility of private event %v in %v. Assuming it wins\n", calendarEvent.Id, roomName)
+		log.Debug("No visibility of private event %v in %v. Assuming it wins\n", calendarEvent.Id, roomName)
 		return true
 	}
 
 	if len(calendarEvent.Attendees) == 0 {
-		log.Printf("No attendees for event %v in %v – assuming it's booked direct to the room's calendar\n",
+		log.Debug("No attendees for event %v in %v – assuming it's booked direct to the room's calendar\n",
 			calendarEvent.Summary,
 			roomName)
 		return true
 	}
 
-	log.Printf("Unable to find room %v in event %v\n", roomName, calendarEvent.Summary)
+	log.Debug("Unable to find room %v in event %v\n", roomName, calendarEvent.Summary)
 	attendeeStr := ""
 	for _, attendee := range calendarEvent.Attendees {
 		attendeeStr = attendeeStr + fmt.Sprintf("\t%v %v %v\n", attendee.DisplayName, attendee.Email, attendee.Id)
 	}
-	log.Printf("Attendees: %v\n", attendeeStr)
+	log.Debug("Attendees: %v\n", attendeeStr)
 
 	return true
 }

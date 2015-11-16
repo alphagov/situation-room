@@ -4,12 +4,15 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
-	"log"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+
+	"github.com/Sirupsen/logrus"
 )
 
 var port = os.Getenv("PORT")
@@ -38,14 +41,27 @@ func main() {
 
 	startTicker()
 
-	log.Println("API is starting up on :" + port)
-	log.Println("Use Ctrl+C to stop")
+	logLevel := determineLogLevel()
+	log.SetLevel(logLevel)
+
+	log.Info("API is starting up on :" + port)
+	log.Info("Use Ctrl+C to stop")
 
 	http.HandleFunc("/rooms", roomsIndexHandler)
 	http.HandleFunc("/rooms/", roomsShowHandler)
 	http.HandleFunc("/_status", statusHandler)
 
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+
+func determineLogLevel() logrus.Level {
+	var l logrus.Level
+	l, err := logrus.ParseLevel(os.Getenv("LOG_LEVEL"))
+	if err != nil {
+		l = logrus.ErrorLevel
+	}
+
+	return l
 }
 
 func statusHandler(w http.ResponseWriter, r *http.Request) {
@@ -131,11 +147,11 @@ func roomsLoaded() bool {
 }
 
 func loadEvents() {
-	log.Print("Loading events...")
+	log.Debug("Loading events...")
 
 	defer func() {
 		if err := recover(); err != nil {
-			log.Println("loadEvents failed:", err)
+			log.Debug("loadEvents failed:", err)
 		}
 	}()
 
@@ -147,7 +163,9 @@ func loadEvents() {
 }
 
 func loadEventsForRoom(calendarName string, calendarId string) {
-	log.Printf("Loading %v", calendarName)
+	log.WithFields(log.Fields{
+		"calendarName": calendarName,
+	}).Debug("Start: Loading")
 	startTime := time.Now()
 	endTime := startTime.Truncate(24 * time.Hour).Add(24 * time.Hour)
 	events, err := client.Api().Events.List(calendarId).
@@ -157,10 +175,15 @@ func loadEventsForRoom(calendarName string, calendarId string) {
 		OrderBy("startTime").Do()
 
 	if err != nil {
-		log.Printf("Error loading room %v: %v", calendarName, err)
+		log.WithFields(log.Fields{
+			"calendarName": calendarName,
+		}).Error("Error loading %v", err)
 	} else {
 		rooms[calendarName] = CreateRoomFromEvents(calendarId, calendarName, events.Items)
-		log.Printf("Finished loading %v events for %v", len(rooms[calendarName].Events), calendarName)
+		log.WithFields(log.Fields{
+			"calendarName": calendarName,
+			"eventCount":   len(rooms[calendarName].Events),
+		}).Debug("Finish: loading")
 	}
 }
 
