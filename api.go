@@ -176,8 +176,9 @@ func loadEventsForRoom(calendarName string, calendarId string) {
 
 	if err != nil {
 		log.WithFields(log.Fields{
-			"calendarName": calendarName,
-		}).Error("Error loading %v", err)
+			"calendarName":  calendarName,
+			logrus.ErrorKey: err,
+		}).Error("Error loading")
 	} else {
 		rooms[calendarName] = CreateRoomFromEvents(calendarId, calendarName, events.Items)
 		log.WithFields(log.Fields{
