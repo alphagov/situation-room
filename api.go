@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"regexp"
@@ -32,6 +33,23 @@ var rooms map[string]Room = make(map[string]Room)
 // This version can be set at build time via the -X flag.
 var Version = "Not Set"
 
+// Links is a top-level document field
+type Links struct {
+	Self    *Link `json:"self,omitempty"`
+	Related *Link `json:"related,omitempty"`
+}
+
+// Link is a JSON format type
+type Link struct {
+	HREF string                 `json:"href,omitempty"`
+	Meta map[string]interface{} `json:"meta,omitempty"`
+}
+
+type APIRoot struct {
+	Meta  map[string]interface{} `json:"meta,omitempty"`
+	Links Links
+}
+
 func main() {
 	client = ApiClient{
 		ClientId:   googleClientId,
@@ -50,6 +68,7 @@ func main() {
 	http.HandleFunc("/rooms", roomsIndexHandler)
 	http.HandleFunc("/rooms/", roomsShowHandler)
 	http.HandleFunc("/_status", statusHandler)
+	http.HandleFunc("/", homeHandler)
 
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
@@ -64,8 +83,42 @@ func determineLogLevel() logrus.Level {
 	return l
 }
 
+func notFound(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotFound)
+	renderJSON(w, map[string]interface{}{
+		"errors": map[string]string{
+			"title":  "Not Found",
+			"detail": fmt.Sprintf("<%s> not found responding to %s", r.URL.Path, r.Method),
+			"status": "404",
+		}})
+}
+
 func statusHandler(w http.ResponseWriter, r *http.Request) {
 	renderJSON(w, map[string]string{"version": Version})
+}
+
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/" {
+		renderJSON(w, APIRoot{
+			Meta: map[string]interface{}{"authors": []string{
+				"James Abley",
+				"Jordan Hatch"}},
+			Links: Links{
+				Self: &Link{
+					HREF: r.URL.Path,
+				},
+				Related: &Link{
+					HREF: "/rooms",
+					Meta: map[string]interface{}{
+						"rel": "jsonapi+root",
+					},
+				},
+			},
+		})
+		return
+	}
+
+	notFound(w, r)
 }
 
 func renderJSON(w http.ResponseWriter, v interface{}) {
@@ -109,13 +162,12 @@ func roomsIndexHandler(w http.ResponseWriter, r *http.Request) {
 
 func roomsShowHandler(w http.ResponseWriter, r *http.Request) {
 	roomExp := regexp.MustCompile("^/rooms/([a-zA-Z0-9]+)$")
-	dummyReq := http.Request{}
 
 	var roomId string
 
 	m := roomExp.FindStringSubmatch(r.URL.Path)
 	if m == nil {
-		http.NotFound(w, &dummyReq)
+		notFound(w, r)
 		return
 	} else {
 		roomId = m[1]
@@ -123,7 +175,7 @@ func roomsShowHandler(w http.ResponseWriter, r *http.Request) {
 
 	room, ok := rooms[roomId]
 	if !ok {
-		http.NotFound(w, &dummyReq)
+		notFound(w, r)
 		return
 	}
 
